@@ -1,10 +1,20 @@
 import SidebarButton from "./sidebar-button";
 
 export default function Sidebar() {
+    function showConnectionModal() {
+        const modal = document.getElementById("newConnectionModal");
+        if (!modal) return
+        modal.classList.remove('hidden');
+    }
+
     return (
-        <div className="flex w-1/4 h-screen absolute pr-8 flex-col gap-y-4 border-r bg-gray float-start margin-0">
-            <SidebarButton text="Nueva Conexión" icon="" />
-            <SidebarButton text="Cerrar Conexión" icon="" />
+        <div className="select-none flex w-1/5 h-screen absolute flex-col border-r bg-gray items-center content-center">
+            <h1 className="text-3xl font-mono text-center font-semibold mt-5">Die B-Meister</h1>
+            <hr className="h-px bg-black my-8 border-0" />
+            <div className="flex flex-col gap-y-4 mt-4">
+                <SidebarButton text="Nueva Conexión" icon="" action={showConnectionModal} />
+                <SidebarButton text="Cerrar Conexión" icon="" />
+            </div>
         </div>
     )
 }
