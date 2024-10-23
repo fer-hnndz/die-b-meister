@@ -1,6 +1,8 @@
 import SidebarButton from "./sidebar-button";
+import { PoolData } from "../interfaces";
 
-export default function Sidebar() {
+export default function Sidebar({ pools }: { pools: PoolData[] }) {
+
     function showConnectionModal() {
         const modal = document.getElementById("newConnectionModal");
         if (!modal) return
@@ -14,6 +16,16 @@ export default function Sidebar() {
             <div className="flex flex-col gap-y-4 mt-4">
                 <SidebarButton text="Nueva Conexión" icon="" action={showConnectionModal} />
                 <SidebarButton text="Cerrar Conexión" icon="" />
+            </div>
+
+            <div>
+                {pools.map((info, index) => {
+                    return (
+                        <div key={index} className="flex flex-col gap-y-4 mt-4">
+                            <SidebarButton text={info.db} icon="" />
+                        </div>
+                    )
+                })}
             </div>
         </div>
     )

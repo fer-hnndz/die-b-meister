@@ -1,13 +1,15 @@
 interface InputProps {
     type: string;
+    id?: string;
     placeholder: string;
     value: string;
     onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-export default function Input({ type, placeholder, value, onChange }: InputProps) {
+export default function Input({ id, type, placeholder, value, onChange }: InputProps) {
     return (
         <input
+            id={id || ""}
             type={type}
             placeholder={placeholder}
             defaultValue={value}
