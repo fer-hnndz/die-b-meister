@@ -9,11 +9,13 @@ export default function Dashboard() {
   const [pools, setPools] = useState<PoolData[]>([])
   const [selectedQuery, setSelectedQuery] = useState<string>('')
   const [selectedConnection, setSelectedConnection] = useState<number>(-1); // Para almacenar la conexión seleccionada
+  const [queryResult, setQueryResult] = useState("");
 
   // Funcion que utiliza el popup para crear una nueva conexión
   // Esta accede a la API para guardar las creds (excepto la pass) 
   // para enlistar las conexiones creadas.
   async function createPool(host: string, port: string, user: string, db: string, pass: string) {
+    let poolId = 0
     try {
       const response = await fetch('/api/pool', {
         method: 'POST',
@@ -36,7 +38,7 @@ export default function Dashboard() {
       }
 
       const data = await response.json();
-      const poolId = data.poolId;
+      poolId = data.poolId;
 
       const newData = {
         host: host,
@@ -49,6 +51,31 @@ export default function Dashboard() {
       setPools((prevPools) => [...prevPools, newData]);
     } catch (error) {
       console.error("Error al crear el pool:", error);
+    }
+
+    // Crear la conexion ahora
+    try {
+      const res = await fetch("/api/connections/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          poolId: poolId,
+          password: pass,
+        }),
+      })
+
+      if (!res.ok) {
+        alert("Error al crear la conexión.");
+      }
+
+      const data = await res.json();
+      console.log(data);
+
+    } catch (error) {
+      console.log(error)
+      alert("Error al crear la conexión.");
     }
   }
 
@@ -89,6 +116,8 @@ export default function Dashboard() {
             <option value="checks">Listar Checks</option>
           </select>
           <button className="ml-2 bg-blue-500 text-white p-2">Ejecutar</button>
+          <br />
+          <p>{queryResult}</p>
         </div>
       </main>
     </div>

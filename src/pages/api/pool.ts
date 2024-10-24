@@ -2,8 +2,8 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import mariadb from 'mariadb';
-import * as fs from 'fs';
-import { PoolData, PoolRequestBody } from '@/interfaces';
+import { checkIfFileExists, getPools, savePool } from './poolJson';
+import { PoolRequestBody } from '@/interfaces';
 
 
 /*
@@ -21,21 +21,6 @@ Formato de pools.json:
     ]
 }
 */
-
-const defaultPoolJSON = {
-    nextId: 1,
-    pools: []
-}
-
-
-function checkIfFileExists() {
-    try {
-        fs.accessSync("pools.json", fs.constants.F_OK);
-        return true;
-    } catch (err) {
-        return false;
-    }
-}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method === 'POST') {
@@ -63,28 +48,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // En este punto, nos conectamos exitosamente a la base de datos.
             // Guardar el pool en un objeto poolsInfo
 
-            if (checkIfFileExists()) {
-                console.log("File exists");
-            } else {
-                fs.writeFileSync("pools.json", JSON.stringify(defaultPoolJSON));
-            }
+            checkIfFileExists();
+            const poolId = savePool(host, user, port, database);
 
-            const poolsJson = fs.readFileSync("pools.json", "utf-8");
-            const poolsData = JSON.parse(poolsJson);
-            const poolId = poolsData.nextId;
-            poolsData.pools.push(
-                {
-                    id: poolId,
-                    host,
-                    user,
-                    port,
-                    database
-                }
-            );
-            poolsData.nextId++;
-
-            // Write the file
-            fs.writeFileSync("pools.json", JSON.stringify(poolsData));
             res.status(200).json({ poolId });
 
         } catch (err) {
@@ -95,14 +61,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } else if (req.method == "GET") {
         // Leer pools guardados
 
-        if (checkIfFileExists()) {
-            console.log("File exists");
-        } else {
-            fs.writeFileSync("pools.json", JSON.stringify(defaultPoolJSON));
-        }
+        checkIfFileExists()
 
-        const poolsJson = fs.readFileSync("pools.json", "utf-8");
-        const poolsData = JSON.parse(poolsJson);
+        const poolsData = getPools();
         return res.status(200).json(JSON.stringify(poolsData.pools));
 
 

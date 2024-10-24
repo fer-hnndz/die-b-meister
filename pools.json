@@ -1,1 +1,12 @@
-{"nextId":3,"pools":[{"id":1,"host":"localhost","user":"mrfellox","port":3306,"database":"mydb"},{"id":2,"host":"localhost","user":"root","port":3306,"database":"test"}]}
+{
+    "nextId": 2,
+    "pools": [
+        {
+            "id": 1,
+            "host": "localhost",
+            "user": "mrfellox",
+            "port": 3306,
+            "database": "mydb"
+        }
+    ]
+}

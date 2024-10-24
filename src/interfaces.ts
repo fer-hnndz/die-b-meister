@@ -3,7 +3,7 @@ export interface PoolData {
     port: number;
     user: string;
     database: string;
-    poolId: number;
+    id: number;
 }
 
 export interface PoolRequestBody {
