@@ -57,6 +57,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 console.log(err)
                 return res.status(500).json({ error: err });
             });
+    } else if (req.method === "GET") {
+        const { poolId } = req.query;
+
+        // Weird typing
+        const poolIdNum = Array.isArray(poolId) ? parseInt(poolId[0]) : parseInt(poolId || "-1");
+
+        const conn = connections.get(poolIdNum);
+        if (!conn) return res.status(404).json({ error: "Connection not found" });
+        return res.status(200).json({ message: "Connection found" });
     } else {
         return res.status(405).json({ error: "Method not allowed" });
     }

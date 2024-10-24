@@ -4,7 +4,7 @@ interface ButtonProps {
     variant?: "primary" | "pale" | "danger" | "success";
 }
 
-export default function SidebarButton({ text, action, variant }: ButtonProps) {
+export default function Button({ text, action, variant }: ButtonProps) {
     let background = "bg-pale";
 
     if (variant == "primary") background = "bg-sky-500";

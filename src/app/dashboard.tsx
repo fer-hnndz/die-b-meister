@@ -4,13 +4,20 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../components/sidebar'
 import NewConnectionPopup from '../modals/new-connection-popup'
 import { PoolData } from '../interfaces'
+import Button from '../components/Button';
 
 export default function Dashboard() {
+  // Storage of pools (connections for the user)
   const [pools, setPools] = useState<PoolData[]>([])
+
+  // Store queries/actions for the connection
   const [selectedQuery, setSelectedQuery] = useState<string>('')
-  const [selectedConnectionId, setSelectedConnectionId] = useState<number>(-1); // Para almacenar la conexión seleccionada
   const [queryResult, setQueryResult] = useState("");
+
+  // Connection storage
+  const [selectedConnectionId, setSelectedConnectionId] = useState<number>(-1); // Para almacenar la conexión seleccionada
   const [selectedConnectionInfo, setSelectedConnectionInfo] = useState<PoolData | null>(null);
+  const [isPoolConnected, setIsPoolConnected] = useState<boolean>(false);
 
   // Funcion que utiliza el popup para crear una nueva conexión
   // Esta accede a la API para guardar las creds (excepto la pass) 
@@ -92,8 +99,11 @@ export default function Dashboard() {
     })
   }, []);
 
+  // Fetch all pool info when a connection is selected
   useEffect(() => {
     async function fetchConnectionInfo() {
+      console.log("Fetching connection info...");
+
       if (selectedConnectionId === -1) return;
       const res = await fetch("/api/pool/", { method: "GET" })
 
@@ -102,8 +112,11 @@ export default function Dashboard() {
       const pools = JSON.parse(data);
 
       setSelectedConnectionInfo(pools.find((pool: PoolData) => pool.id === selectedConnectionId));
+
+      const res2 = await fetch(`/api/connections?poolId=${selectedConnectionId}`, { method: "GET" });
+      setIsPoolConnected(res2.ok);
     }
-    fetchConnectionInfo();
+    fetchConnectionInfo().then(console.log("Connection info fetched"));
   }, [selectedConnectionId])
 
   return (
@@ -129,8 +142,13 @@ export default function Dashboard() {
             <option value="checks">Listar Checks</option>
           </select>
           <button className="ml-2 bg-blue-500 text-white p-2">Ejecutar</button>
-          <br />
-          {(!selectedConnectionInfo) ? (<h1>Selecciona una conexion</h1>) : <h1>{selectedConnectionInfo.user}@{selectedConnectionInfo.host}:{selectedConnectionInfo.port}</h1>}
+
+          <div className="bg-red w-fit h-fit p-4 rounded shadow-md">
+            {(selectedConnectionId != -1) ? <h1>Estado de Conexion</h1> : <></>}
+            {(selectedConnectionId != -1) ? ((isPoolConnected) ? <h1>Conectado</h1> : <div className="flex flex-row gap-y-1"><h1>Desconectado</h1> <Button text="Conectar" variant='primary' /> </div>) : <></>}
+            <br />
+            {(!selectedConnectionInfo) ? (<h1>Selecciona una conexion</h1>) : <h1>{selectedConnectionInfo.user}@{selectedConnectionInfo.host}:{selectedConnectionInfo.port}</h1>}
+          </div>
         </div>
       </main>
     </div>
