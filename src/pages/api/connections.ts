@@ -14,7 +14,23 @@ export const connections = new Map<number, PoolConnection>();
  *  data: [[], [], []]
  * }
  */
-function rowsToResponse() { }
+function rowsToResponse(rows: any[]) {
+    // Get object keys
+    const keys = Object.keys(rows[0])
+
+    for (let i = 0; i < keys.length; i++) {
+        keys[i] = keys[i].toUpperCase();
+        keys[i] = keys[i].replace("_", " ");
+    }
+
+    const headers = keys;
+    const data = rows.map((row) => {
+        return Object.values(row);
+    });
+
+    console.log({ headers, data })
+    return { headers, data }
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method === "POST") {
@@ -54,18 +70,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const conn = connections.get(parseInt(poolId));
         if (!conn) return res.status(404).json({ error: "Connection not found" });
 
-        const sqlQuery = retrieve_queries.get(query)
-        if (!sqlQuery) return res.status(404).json({ error: "Query not found" });
-        conn.execute(sqlQuery)
-            .then((rows) => {
-                console.log(rows)
-                console.log("-----------------")
-                return res.status(200).json(rows);
-            })
-            .catch((err) => {
-                console.log(err)
-                return res.status(500).json({ error: err });
-            });
+        try {
+            const rows = await conn.query(retrieve_queries.get(query)!);
+            const response = rowsToResponse(rows);
+            return res.status(200).json(response);
+        } catch (err) {
+            console.log(err);
+            return res.status(500).json({ error: err });
+        }
     } else if (req.method === "GET") {
         const { poolId } = req.query;
 

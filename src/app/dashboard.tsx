@@ -5,6 +5,7 @@ import Sidebar from '../components/sidebar'
 import NewConnectionPopup from '../modals/new-connection-popup'
 import { PoolData } from '../interfaces'
 import Button from '../components/Button';
+import DataTable from '@/components/DataTable'
 
 export default function Dashboard() {
   // Storage of pools (connections for the user)
@@ -12,7 +13,8 @@ export default function Dashboard() {
 
   // Store queries/actions for the connection
   const [selectedQuery, setSelectedQuery] = useState<string>('')
-  const [queryResult, setQueryResult] = useState("");
+  const [queryHeaders, setQueryHeaders] = useState<string[]>([]);
+  const [queryData, setQueryData] = useState<string[]>([]);
 
   // Connection storage
   const [selectedConnectionId, setSelectedConnectionId] = useState<number>(-1); // Para almacenar la conexión seleccionada
@@ -144,6 +146,37 @@ export default function Dashboard() {
     fetchConnectionInfo()
   }, [selectedConnectionId])
 
+  async function executeQuery() {
+    const query = selectedQuery;
+    const poolId = selectedConnectionId;
+
+    if (query === "" || poolId === -1) {
+      alert("Selecciona una conexión y una consulta.");
+      return;
+    }
+
+    const res = await fetch("/api/connections", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        poolId,
+        query,
+      }),
+    });
+
+    if (!res.ok) {
+      alert("Error al ejecutar la consulta.");
+      return;
+    }
+
+    const data = await res.json();
+    console.log(data);
+    setQueryHeaders(data.headers);
+    setQueryData(data.data)
+  }
+
   return (
     <div className='flex flex-row'>
       <Sidebar pools={pools} onSelectPool={updateSelectedPool} />
@@ -166,7 +199,8 @@ export default function Dashboard() {
             <option value="views">Listar Vistas</option>
             <option value="checks">Listar Checks</option>
           </select>
-          <button className="ml-2 bg-blue-500 text-white p-2">Ejecutar</button>
+
+          <Button text="Ejecutar" variant='primary' action={executeQuery} />
 
           <div className="bg-red w-fit h-fit p-4 rounded shadow-md">
             {(selectedConnectionId != -1) ? <h1>Estado de Conexion</h1> : <></>}
@@ -175,6 +209,8 @@ export default function Dashboard() {
             {(!selectedConnectionInfo) ? (<h1>Selecciona una conexion</h1>) : <h1>{selectedConnectionInfo.user}@{selectedConnectionInfo.host}:{selectedConnectionInfo.port}</h1>}
           </div>
         </div>
+
+        <DataTable headers={queryHeaders} data={queryData} />
       </main>
     </div>
   )
