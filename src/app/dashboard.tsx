@@ -8,8 +8,9 @@ import { PoolData } from '../interfaces'
 export default function Dashboard() {
   const [pools, setPools] = useState<PoolData[]>([])
   const [selectedQuery, setSelectedQuery] = useState<string>('')
-  const [selectedConnection, setSelectedConnection] = useState<number>(-1); // Para almacenar la conexión seleccionada
+  const [selectedConnectionId, setSelectedConnectionId] = useState<number>(-1); // Para almacenar la conexión seleccionada
   const [queryResult, setQueryResult] = useState("");
+  const [selectedConnectionInfo, setSelectedConnectionInfo] = useState<PoolData | null>(null);
 
   // Funcion que utiliza el popup para crear una nueva conexión
   // Esta accede a la API para guardar las creds (excepto la pass) 
@@ -45,10 +46,11 @@ export default function Dashboard() {
         user: user,
         port: parseInt(port),
         database: db,
-        poolId: poolId,
+        id: poolId,
       };
 
       setPools((prevPools) => [...prevPools, newData]);
+      setSelectedConnectionId(poolId);
     } catch (error) {
       console.error("Error al crear el pool:", error);
     }
@@ -66,10 +68,6 @@ export default function Dashboard() {
         }),
       })
 
-      if (!res.ok) {
-        alert("Error al crear la conexión.");
-      }
-
       const data = await res.json();
       console.log(data);
 
@@ -81,7 +79,7 @@ export default function Dashboard() {
 
   // Funcion que usa Sidebar para actualizar la conexión seleccionada
   function updateSelectedPool(poolId: number) {
-    setSelectedConnection(poolId);
+    setSelectedConnectionId(poolId);
   }
 
   // Cargar los pools de conexión al cargar la página
@@ -89,9 +87,24 @@ export default function Dashboard() {
     fetch('/api/pool').then(async (response) => {
       if (!response.ok) alert("Error al cargar las conexiones existentes.");
       const data = await response.json();
+      console.log(data, typeof data);
       setPools(JSON.parse(data));
     })
   }, []);
+
+  useEffect(() => {
+    async function fetchConnectionInfo() {
+      if (selectedConnectionId === -1) return;
+      const res = await fetch("/api/pool/", { method: "GET" })
+
+      const data = await res.json();
+      console.log(data, typeof data)
+      const pools = JSON.parse(data);
+
+      setSelectedConnectionInfo(pools.find((pool: PoolData) => pool.id === selectedConnectionId));
+    }
+    fetchConnectionInfo();
+  }, [selectedConnectionId])
 
   return (
     <div className='flex flex-row'>
@@ -117,7 +130,7 @@ export default function Dashboard() {
           </select>
           <button className="ml-2 bg-blue-500 text-white p-2">Ejecutar</button>
           <br />
-          <p>{queryResult}</p>
+          {(!selectedConnectionInfo) ? (<h1>Selecciona una conexion</h1>) : <h1>{selectedConnectionInfo.user}@{selectedConnectionInfo.host}:{selectedConnectionInfo.port}</h1>}
         </div>
       </main>
     </div>

@@ -64,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         checkIfFileExists()
 
         const poolsData = getPools();
-        return res.status(200).json(JSON.stringify(poolsData.pools));
+        return res.status(200).json(JSON.stringify(poolsData));
 
 
     } else {

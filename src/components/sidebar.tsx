@@ -16,6 +16,7 @@ export default function Sidebar({ pools, onSelectPool }: SidebarProps) {
     }
 
     function onPoolClick(index: number) {
+        console.log("clicked div")
         onSelectPool(index);
     }
 
@@ -33,8 +34,9 @@ export default function Sidebar({ pools, onSelectPool }: SidebarProps) {
                 <div className="flex flex-col text-center items-center gap-y-3 content-center">
                     {pools.map((info, index) => {
                         return (
-                            <div onClick={() => onPoolClick(index)} key={index} className="hover:bg-blue-500 ease-in-out duration-150 w-fit h-fit p-4 rounded-md shadow-lg border hover:cursor-pointer">
-                                <span>{info.database}@{info.host}:{info.port}</span>
+                            <div onClick={() => onPoolClick(info.id)} key={index} className="hover:bg-blue-500 ease-in-out duration-150 w-fit h-fit p-4 rounded-md shadow-lg border hover:cursor-pointer flex flex-col justify-start items-start">
+                                <span className="font-bold text-md">{info.database}</span>
+                                <span className="text-black italics text-sm">{info.user}@{info.host}:{info.port}</span>
                             </div>
                         );
                     })}
