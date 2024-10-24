@@ -84,8 +84,34 @@ export default function Dashboard() {
     }
   }
 
+  async function connect() {
+    try {
+      const password = prompt("Ingrese la contraseña de la DB");
+      const res = await fetch("/api/connections", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          poolId: selectedConnectionId,
+          password
+        })
+      });
+
+      if (!res.ok) {
+        alert("Error al conectar a la DB.");
+        return;
+      }
+
+      setIsPoolConnected(true);
+    } catch (error) {
+      console.error("Error al conectar a la DB:", error);
+    }
+  }
+
   // Funcion que usa Sidebar para actualizar la conexión seleccionada
   function updateSelectedPool(poolId: number) {
+    console.log("Updating selected conn to ", poolId)
     setSelectedConnectionId(poolId);
   }
 
@@ -108,7 +134,6 @@ export default function Dashboard() {
       const res = await fetch("/api/pool/", { method: "GET" })
 
       const data = await res.json();
-      console.log(data, typeof data)
       const pools = JSON.parse(data);
 
       setSelectedConnectionInfo(pools.find((pool: PoolData) => pool.id === selectedConnectionId));
@@ -116,7 +141,7 @@ export default function Dashboard() {
       const res2 = await fetch(`/api/connections?poolId=${selectedConnectionId}`, { method: "GET" });
       setIsPoolConnected(res2.ok);
     }
-    fetchConnectionInfo().then(console.log("Connection info fetched"));
+    fetchConnectionInfo()
   }, [selectedConnectionId])
 
   return (
@@ -145,7 +170,7 @@ export default function Dashboard() {
 
           <div className="bg-red w-fit h-fit p-4 rounded shadow-md">
             {(selectedConnectionId != -1) ? <h1>Estado de Conexion</h1> : <></>}
-            {(selectedConnectionId != -1) ? ((isPoolConnected) ? <h1>Conectado</h1> : <div className="flex flex-row gap-y-1"><h1>Desconectado</h1> <Button text="Conectar" variant='primary' /> </div>) : <></>}
+            {(selectedConnectionId != -1) ? ((isPoolConnected) ? <h1>Conectado</h1> : <div className="flex flex-row gap-y-1"><h1>Desconectado</h1> <Button action={() => { connect() }} id={`connect-${selectedConnectionId}`} text="Conectar" variant='primary' /> </div>) : <></>}
             <br />
             {(!selectedConnectionInfo) ? (<h1>Selecciona una conexion</h1>) : <h1>{selectedConnectionInfo.user}@{selectedConnectionInfo.host}:{selectedConnectionInfo.port}</h1>}
           </div>

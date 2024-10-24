@@ -7,6 +7,15 @@ const retrieve_queries = new Map<string, string>();
 
 export const connections = new Map<number, PoolConnection>();
 
+/**
+ * Transforms a row into a response object like so:
+ * {
+ *  headers: []
+ *  data: [[], [], []]
+ * }
+ */
+function rowsToResponse() { }
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method === "POST") {
         const { poolId, password } = req.body;

@@ -2,9 +2,10 @@ interface ButtonProps {
     text: string;
     action?: () => void;
     variant?: "primary" | "pale" | "danger" | "success";
+    id?: string
 }
 
-export default function Button({ text, action, variant }: ButtonProps) {
+export default function Button({ text, action, variant, id }: ButtonProps) {
     let background = "bg-pale";
 
     if (variant == "primary") background = "bg-sky-500";
@@ -14,6 +15,7 @@ export default function Button({ text, action, variant }: ButtonProps) {
     const classes = `flex w-fit h-fit p-4 rounded-2xl ${background} font-semibold text-md`
     return (
         <button
+            id={id}
             className={classes}
             onClick={() => { if (action) action() }}
         >{text}
