@@ -1,7 +1,7 @@
 import Input from "../components/input";
 import Button from "../components/Button";
 
-export default function NewConnectionPopup({ create_connection }: { create_connection: (name: string, host: string, port: string, user: string, db: string, pass: string,) => void }) {
+export default function NewConnectionPopup({ create_connection }: { create_connection: (host: string, port: string, user: string, db: string, pass: string) => void }) {
 
     function close() {
         const modal = document.getElementById("newConnectionModal");
@@ -10,24 +10,22 @@ export default function NewConnectionPopup({ create_connection }: { create_conne
     }
 
     function addConnection() {
-        const name = (document.getElementById("connName") as HTMLInputElement).value;
         const host = (document.getElementById("connHost") as HTMLInputElement).value;
         const port = (document.getElementById("connPort") as HTMLInputElement).value;
         const user = (document.getElementById("connUser") as HTMLInputElement).value;
         const pass = (document.getElementById("connPass") as HTMLInputElement).value;
         const db = (document.getElementById("connDb") as HTMLInputElement).value;
 
-        create_connection(name, host, port, user, pass, db);
+        create_connection(host, port, user, db, pass);
 
         // Clear fields
-        (document.getElementById("connName") as HTMLInputElement).value = "";
         (document.getElementById("connHost") as HTMLInputElement).value = "";
         (document.getElementById("connPort") as HTMLInputElement).value = "3306";
         (document.getElementById("connUser") as HTMLInputElement).value = "";
         (document.getElementById("connPass") as HTMLInputElement).value = "";
         (document.getElementById("connDb") as HTMLInputElement).value = "";
 
-        close(); 2
+        close();
     }
 
     return (
@@ -35,7 +33,6 @@ export default function NewConnectionPopup({ create_connection }: { create_conne
             <div className="w-2/3 h-2/3 absolute rounded-lg shadow bg-white">
                 <h1 className="font-bold text-3xl text-center text-black mt-4">Nueva Conexión</h1>
                 <div className="flex flex-col gap-y-3 items-center mt-8">
-                    <Input id="connName" type="text" placeholder="Nombre de la conexión" value="" />
                     <Input id="connHost" type="text" placeholder="Host" value="" />
                     <Input id="connPort" type="number" placeholder="Puerto" value="3306" />
                     <Input id="connUser" type="text" placeholder="Usuario" value="" />

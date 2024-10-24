@@ -1,9 +1,15 @@
 export interface PoolData {
-    name: string;
     host: string;
     port: number;
     user: string;
-    pass?: string;
-    db: string;
+    database: string;
     poolId: number;
+}
+
+export interface PoolRequestBody {
+    host: string;
+    user: string;
+    password: string;
+    port: number
+    database: string;
 }

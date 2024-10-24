@@ -2,48 +2,110 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import mariadb from 'mariadb';
+import * as fs from 'fs';
+import { PoolData, PoolRequestBody } from '@/interfaces';
 
-// Definir la interfaz para el cuerpo de la solicitud
-interface PoolRequestBody {
-    host: string;
-    user: string;
-    password: string;
-    database: string;
-    connectionLimit?: number;
+
+/*
+Formato de pools.json:
+{
+    nextId: 1;
+    pools: [
+        {
+            id: 1,
+            host: "localhost",
+            port: 3306,
+            user: "root",
+            db: "test",            
+        }
+    ]
+}
+*/
+
+const defaultPoolJSON = {
+    nextId: 1,
+    pools: []
 }
 
-// Objeto para almacenar los pools de conexión
-export const pools: Record<number, mariadb.Pool> = {};
-let nextPoolId = 1; // Contador para el siguiente ID de pool
 
-// Crear un pool y devolver su ID
+function checkIfFileExists() {
+    try {
+        fs.accessSync("pools.json", fs.constants.F_OK);
+        return true;
+    } catch (err) {
+        return false;
+    }
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method === 'POST') {
         // Validar que el body tiene el formato correcto
-        const { host, user, password, database, connectionLimit } = req.body as PoolRequestBody;
+        const { host, user, password, database, port } = req.body as PoolRequestBody;
 
         try {
-            // Crear un nuevo pool de conexión
+            console.log("Saving pool....")
+
+            // Crear nuevo pool
             const pool = mariadb.createPool({
                 host,
                 user,
                 password,
                 database,
-                connectionLimit: connectionLimit || 5, // Valor por defecto de límite
+                port,
+                connectionLimit: 5,
+                acquireTimeout: 3000
             });
 
-            // Asignar el ID actual y luego incrementarlo
-            const poolId = nextPoolId++;
+            console.log("Intendando obtener conexión...");
+            await pool.getConnection()
+            await pool.end();
 
-            // Guardar el pool en el objeto 'pools' con su ID
-            pools[poolId] = pool;
+            // En este punto, nos conectamos exitosamente a la base de datos.
+            // Guardar el pool en un objeto poolsInfo
 
-            // Devolver el ID del pool creado
+            if (checkIfFileExists()) {
+                console.log("File exists");
+            } else {
+                fs.writeFileSync("pools.json", JSON.stringify(defaultPoolJSON));
+            }
+
+            const poolsJson = fs.readFileSync("pools.json", "utf-8");
+            const poolsData = JSON.parse(poolsJson);
+            const poolId = poolsData.nextId;
+            poolsData.pools.push(
+                {
+                    id: poolId,
+                    host,
+                    user,
+                    port,
+                    database
+                }
+            );
+            poolsData.nextId++;
+
+            // Write the file
+            fs.writeFileSync("pools.json", JSON.stringify(poolsData));
             res.status(200).json({ poolId });
+
         } catch (err) {
+            console.log(err)
             // En caso de error, devolver el mensaje de error
             res.status(500).json({ error: 'Error creando el pool', details: err });
         }
+    } else if (req.method == "GET") {
+        // Leer pools guardados
+
+        if (checkIfFileExists()) {
+            console.log("File exists");
+        } else {
+            fs.writeFileSync("pools.json", JSON.stringify(defaultPoolJSON));
+        }
+
+        const poolsJson = fs.readFileSync("pools.json", "utf-8");
+        const poolsData = JSON.parse(poolsJson);
+        return res.status(200).json(JSON.stringify(poolsData.pools));
+
+
     } else {
         // Si el método no es POST, devolver un error
         res.status(405).json({ error: 'Método no permitido' });

@@ -1,16 +1,26 @@
 import SidebarButton from "./sidebar-button";
 import { PoolData } from "../interfaces";
+import { useState } from "react";
 
-export default function Sidebar({ pools }: { pools: PoolData[] }) {
+interface SidebarProps {
+    pools: PoolData[];
+    onSelectPool: (poolId: number) => void; // Función para seleccionar una pool
+}
+
+export default function Sidebar({ pools, onSelectPool }: SidebarProps) {
 
     function showConnectionModal() {
         const modal = document.getElementById("newConnectionModal");
-        if (!modal) return
+        if (!modal) return;
         modal.classList.remove('hidden');
     }
 
+    function onPoolClick(index: number) {
+        onSelectPool(index);
+    }
+
     return (
-        <div className="select-none flex w-1/5 h-screen absolute flex-col border-r bg-gray items-center content-center">
+        <div className="select-none flex w-1/5 h-screen flex-col border-r bg-gray items-center content-center">
             <h1 className="text-3xl font-mono text-center font-semibold mt-5">Die B-Meister</h1>
             <hr className="h-px bg-black my-8 border-0" />
             <div className="flex flex-col gap-y-4 mt-4">
@@ -18,15 +28,18 @@ export default function Sidebar({ pools }: { pools: PoolData[] }) {
                 <SidebarButton text="Cerrar Conexión" icon="" />
             </div>
 
-            <div>
-                {pools.map((info, index) => {
-                    return (
-                        <div key={index} className="flex flex-col gap-y-4 mt-4">
-                            <SidebarButton text={info.db} icon="" />
-                        </div>
-                    )
-                })}
+            <div className="w-4/5 mt-12 bg-white h-1/2 rounded overflow-y-scroll overflow-x-clip">
+                <h1 className="text-center text-xl font-bold mt-2">Conexiones</h1>
+                <div className="flex flex-col text-center items-center gap-y-3 content-center">
+                    {pools.map((info, index) => {
+                        return (
+                            <div onClick={() => onPoolClick(index)} key={index} className="hover:bg-blue-500 ease-in-out duration-150 w-fit h-fit p-4 rounded-md shadow-lg border hover:cursor-pointer">
+                                <span>{info.database}@{info.host}:{info.port}</span>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
         </div>
-    )
+    );
 }
