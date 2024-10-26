@@ -101,6 +101,11 @@ export default function Dashboard() {
       });
 
       if (!res.ok) {
+        if (res.status === 500) {
+          const data = await res.json();
+          alert(`Error al conectar a la DB. ${data.error}`);
+          return;
+        }
         alert("Error al conectar a la DB.");
         return;
       }
@@ -167,12 +172,20 @@ export default function Dashboard() {
     });
 
     if (!res.ok) {
+      if (res.status === 404) {
+        alert("Error al ejecutar la consulta. Se ha interrumpido la conexión.");
+        setIsPoolConnected(false);
+        return
+      }
+
       alert("Error al ejecutar la consulta.");
       return;
     }
 
     const data = await res.json();
-    console.log(data);
+    if (data.headers.length === 0) {
+      alert("No se encontraron resultados.");
+    }
     setQueryHeaders(data.headers);
     setQueryData(data.data)
   }
@@ -193,6 +206,8 @@ export default function Dashboard() {
           >
             <option value="">-- Seleccionar consulta --</option>
             <option value="tables">Listar Tablas</option>
+            <option value="pk">Listar Llaves Primarias</option>
+            <option value="fk">Listar Llaves Foráneas</option>
             <option value="indices">Listar Índices</option>
             <option value="procedures">Listar Store Procedures</option>
             <option value="triggers">Listar Triggers</option>

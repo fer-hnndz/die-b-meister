@@ -1,4 +1,4 @@
-import { PoolConnection } from "mariadb";
+import { PoolConnection, SqlError } from "mariadb";
 import { getPoolById } from "./poolJson";
 import mariadb from "mariadb";
 import { NextApiRequest, NextApiResponse } from "next";
@@ -14,7 +14,7 @@ export const connections = new Map<number, PoolConnection>();
  *  data: [[], [], []]
  * }
  */
-function rowsToResponse(rows: any[]) {
+function rowsToResponse(rows: object[]) {
     // Get object keys
     const keys = Object.keys(rows[0])
 
@@ -41,17 +41,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (!poolData) return res.status(404).json(JSON.stringify({ error: "Pool not found" }));
 
-        const pool = mariadb.createPool({
-            host: poolData.host,
-            port: poolData.port,
-            user: poolData.user,
-            password: password,
-            database: poolData.database
-        });
+        try {
 
-        const conn = await pool.getConnection();
-        connections.set(parseInt(poolId), conn);
-        return res.status(200).json({ message: "Connection created successfully" });
+            const pool = mariadb.createPool({
+                host: poolData.host,
+                port: poolData.port,
+                user: poolData.user,
+                password: password,
+                database: poolData.database
+            });
+
+            const conn = await pool.getConnection();
+            connections.set(parseInt(poolId), conn);
+            return res.status(200).json({ message: "Connection created successfully" });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ error: (error as SqlError).cause.sqlMessage });
+        }
     } else if (req.method === "DELETE") {
         const { poolId } = req.body;
         const pool = connections.get(parseInt(poolId));
@@ -63,7 +69,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(404).json({ error: "Connection not found" });
         }
     } else if (req.method === "PUT") {
-        retrieve_queries.set("tables", "SELECT table_name, index_name, column_name index_type FROM information_schema.statistics");
+
+        // Queries constantes
+
+        retrieve_queries.set("tables",
+            "SELECT table_name, index_name, column_name index_type FROM information_schema.statistics");
+        retrieve_queries.set("pk",
+            "SELECT table_name, index_name, column_name, index_type FROM information_schema.statistics");
+        retrieve_queries.set("fk",
+            "SELECT table_name, column_name, constraint_name, referenced_table_name, referenced_column_name FROM information_schema.key_column_usage WHERE referenced_table_name IS NOT NULL");
+        retrieve_queries.set("indices",
+            "SELECT table_name, index_name, column_name, index_type FROM information_schema.statistics");
+        retrieve_queries.set("procedures",
+            "SELECT routine_type, routine_name FROM information_schema.routines");
+        retrieve_queries.set("triggers",
+            "SELECT trigger_name, event_manipulation, event_object_table, action_statement FROM information_schema.triggers"
+        )
+        retrieve_queries.set("views",
+            "SELECT table_schema, table_name FROM information_schema.tables WHERE table_type = 'VIEW'"
+        )
+        retrieve_queries.set("checks",
+            "SELECT constraint_name, table_name, check_clause FROM information_schema.check_constraints"
+        )
+
 
         const { poolId, query } = req.body;
 
@@ -71,7 +99,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!conn) return res.status(404).json({ error: "Connection not found" });
 
         try {
-            const rows = await conn.query(retrieve_queries.get(query)!);
+            const sql = retrieve_queries.get(query)
+            if (!sql) return res.status(404).json({ error: "Query not found" });
+
+            const rows = await conn.query(sql);
+            if (!rows.length) {
+                console.log("No rows found. Returning empty response");
+                return res.status(200).json({ headers: [], data: [] });
+            }
+
             const response = rowsToResponse(rows);
             return res.status(200).json(response);
         } catch (err) {
