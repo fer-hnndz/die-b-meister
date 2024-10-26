@@ -1,6 +1,5 @@
 import SidebarButton from "./sidebar-button";
 import { PoolData } from "../interfaces";
-import { useState } from "react";
 
 interface SidebarProps {
     pools: PoolData[];

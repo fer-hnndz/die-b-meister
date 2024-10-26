@@ -6,10 +6,14 @@ import NewConnectionPopup from '../modals/new-connection-popup'
 import { PoolData } from '../interfaces'
 import Button from '../components/Button';
 import DataTable from '@/components/DataTable'
+import CreateTableModal from '@/modals/new-table'
 
 export default function Dashboard() {
   // Storage of pools (connections for the user)
   const [pools, setPools] = useState<PoolData[]>([])
+
+  // Modals
+  const [isCreateTableModalOpen, setIsCreateTableModalOpen] = useState<boolean>(false);
 
   // Store queries/actions for the connection
   const [selectedQuery, setSelectedQuery] = useState<string>('tables')
@@ -234,6 +238,18 @@ export default function Dashboard() {
     <div className='flex flex-row'>
       <Sidebar pools={pools} onSelectPool={updateSelectedPool} />
 
+      <CreateTableModal
+        isOpen={isCreateTableModalOpen}
+        onClose={(query?: string) => {
+          if (!query) return;
+          console.warn(query)
+          setIsCreateTableModalOpen(false)
+        }}
+        onCancel={() => { setIsCreateTableModalOpen(false) }}
+
+
+      />
+
       <NewConnectionPopup create_connection={createPool} />
       <main className="text-black pt-2 overflow-x-hidden">
         <div className='float-top w-auto h-fit'>
@@ -245,6 +261,12 @@ export default function Dashboard() {
             {(!selectedConnectionInfo) ? (<h1>Selecciona una conexion</h1>) : <h1>{selectedConnectionInfo.user}@{selectedConnectionInfo.host}:{selectedConnectionInfo.port}</h1>}
           </div>
         </div>
+
+        {(isPoolConnected) ? (
+          <div className='flex flex-row gap-x-2'>
+            <Button action={() => { setIsCreateTableModalOpen(true) }} id='create-table' text='Crear Tabla' variant='primary' />
+          </div>
+        ) : <></>}
 
         {/* Sección de consultas */}
         <div className='flex flex-col h-2/5 absolute overflow-x-hidden bottom-2 border-t w-10/12 bg-pale'>
