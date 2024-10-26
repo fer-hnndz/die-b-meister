@@ -69,17 +69,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(404).json({ error: "Connection not found" });
         }
     } else if (req.method === "PUT") {
-
         // Queries constantes
 
         retrieve_queries.set("tables",
-            "SELECT table_name, index_name, column_name index_type FROM information_schema.statistics");
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'DB_NAME'");
         retrieve_queries.set("pk",
-            "SELECT table_name, index_name, column_name, index_type FROM information_schema.statistics");
+            "SELECT table_name, index_name, column_name, index_type FROM information_schema.statistics WHERE table_schema = 'DB_NAME' AND index_name = 'PRIMARY'");
         retrieve_queries.set("fk",
-            "SELECT table_name, column_name, constraint_name, referenced_table_name, referenced_column_name FROM information_schema.key_column_usage WHERE referenced_table_name IS NOT NULL");
+            "SELECT table_name, column_name, constraint_name, referenced_table_name, referenced_column_name FROM information_schema.key_column_usage WHERE referenced_table_name IS NOT NULL AND table_schema = 'DB_NAME'");
         retrieve_queries.set("indices",
-            "SELECT table_name, index_name, column_name, index_type FROM information_schema.statistics");
+            "SELECT table_name, index_name, column_name, index_type FROM information_schema.statistics WHERE table_schema = 'DB_NAME' AND index_name != 'PRIMARY'");
         retrieve_queries.set("procedures",
             "SELECT routine_type, routine_name FROM information_schema.routines");
         retrieve_queries.set("triggers",
@@ -92,22 +91,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             "SELECT constraint_name, table_name, check_clause FROM information_schema.check_constraints"
         )
 
-
-        const { poolId, query } = req.body;
+        const { poolId, query, sqlQuery, dbName } = req.body;
 
         const conn = connections.get(parseInt(poolId));
         if (!conn) return res.status(404).json({ error: "Connection not found" });
 
         try {
-            const sql = retrieve_queries.get(query)
-            if (!sql) return res.status(404).json({ error: "Query not found" });
 
-            const rows = await conn.query(sql);
+            let sql;
+
+            if (query === "own" || query === "info") sql = sqlQuery;
+            else sql = retrieve_queries.get(query)
+
+            if (!sql) return res.status(404).json({ error: "Query not found" });
+            sql = sql.replace("DB_NAME", dbName);
+            console.log(sql)
+            let rows;
+
+            // Se ejecuta query custom
+            if (query === "own") {
+                rows = await conn.execute(sql);
+                await conn.commit();
+            } else if (query === "info") {
+                // Disenado para retraer info del schema
+                rows = await conn.query(sql);
+                console.log(rows);
+                return res.status(200).json(rows);
+            } else rows = await conn.query(sql);
+
             if (!rows.length) {
                 console.log("No rows found. Returning empty response");
                 return res.status(200).json({ headers: [], data: [] });
             }
 
+            if (query === "own") return res.status(200).json(rows);
             const response = rowsToResponse(rows);
             return res.status(200).json(response);
         } catch (err) {

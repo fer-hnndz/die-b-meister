@@ -7,6 +7,7 @@ import { PoolData } from '../interfaces'
 import Button from '../components/Button';
 import DataTable from '@/components/DataTable'
 import CreateTableModal from '@/modals/new-table'
+import EditTableModal from '@/modals/edit-table'
 
 export default function Dashboard() {
   // Storage of pools (connections for the user)
@@ -14,6 +15,7 @@ export default function Dashboard() {
 
   // Modals
   const [isCreateTableModalOpen, setIsCreateTableModalOpen] = useState<boolean>(false);
+  const [isEditTableModalOpen, setIsEditTableModalOpen] = useState<boolean>(false);
 
   // Store queries/actions for the connection
   const [selectedQuery, setSelectedQuery] = useState<string>('tables')
@@ -24,6 +26,7 @@ export default function Dashboard() {
   const [selectedConnectionId, setSelectedConnectionId] = useState<number>(-1); // Para almacenar la conexión seleccionada
   const [selectedConnectionInfo, setSelectedConnectionInfo] = useState<PoolData | null>(null);
   const [isPoolConnected, setIsPoolConnected] = useState<boolean>(false);
+  const [connectionSchema, setConnectionSchema] = useState<string[]>([]);
 
   // Funcion que utiliza el popup para crear una nueva conexión
   // Esta accede a la API para guardar las creds (excepto la pass) 
@@ -134,9 +137,9 @@ export default function Dashboard() {
   */
   useEffect(() => {
     async function fetchConnectionInfo() {
-      console.log("Fetching connection info...");
 
       if (selectedConnectionId === -1) return;
+      console.log("Fetching connection info...");
       const res = await fetch("/api/pool/", { method: "GET" })
 
       const data = await res.json();
@@ -171,6 +174,7 @@ export default function Dashboard() {
       body: JSON.stringify({
         poolId,
         query,
+        dbName: selectedConnectionInfo?.database,
       }),
     });
 
@@ -187,12 +191,9 @@ export default function Dashboard() {
     }
 
     const data = await res.json();
-    if (data.headers.length === 0) {
-      alert("No se encontraron resultados.");
-    }
     setQueryHeaders(data.headers);
     setQueryData(data.data)
-  }, [selectedQuery, selectedConnectionId, isPoolConnected])
+  }, [selectedQuery, selectedConnectionId, isPoolConnected, selectedConnectionInfo])
 
   /*
   ------------------------
@@ -220,6 +221,83 @@ export default function Dashboard() {
   }
 
   /*
+  *****************
+  Callback que fetchea el schema de la conexion.
+  *****************
+  */
+  const fetchConnTables = useCallback(async () => {
+    if (!isPoolConnected) return []
+
+    const res = await fetch("/api/connections", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        poolId: selectedConnectionId,
+        query: "info",
+        sqlQuery: `SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT, TABLE_NAME FROM information_schema.columns WHERE table_schema = '${selectedConnectionInfo?.database}'`,
+      }),
+    });
+
+    const data = await res.json();
+    console.log(data, typeof data)
+
+    // Función para mapear el tipo de dato
+    const mapDataType = (dataType: string) => {
+      switch (dataType.toUpperCase()) {
+        case 'INT':
+          return 'INT';
+        case 'TINYINT':
+        case 'SMALLINT':
+        case 'MEDIUMINT':
+        case 'BIGINT':
+          return 'INT';
+        case 'BOOLEAN':
+          return 'BOOLEAN';
+        case 'VARCHAR':
+        case 'CHAR':
+        case 'TEXT':
+          return 'VARCHAR(200)';
+        case 'DATETIME':
+          return 'DATETIME';
+        case 'DECIMAL':
+        case 'DECIMAL(10,2)': // Ejemplo, ajusta según tus necesidades
+          return 'DECIMAL';
+        default:
+          return 'UNKNOWN'; // O alguna opción por defecto
+      }
+    };
+
+
+    // Mapeo de resultados a un array
+    const columnsObj = data.map((row) => ({
+      name: row.COLUMN_NAME,
+      type: mapDataType(row.DATA_TYPE),
+      isNullable: row.IS_NULLABLE === 'YES',
+      defaultValue: row.COLUMN_DEFAULT,
+      tableName: row.TABLE_NAME,
+    }));
+
+    return columnsObj;
+  }, [isPoolConnected, selectedConnectionId, selectedConnectionInfo])
+
+  /*
+  ------------------------
+  UseEffect que se ejecuta al cambiar la conexión seleccionada para obtener el schema de la conexión.
+  ------------------------
+  */
+  useEffect(() => {
+    async function fetchTables() {
+      const columns = await fetchConnTables();
+      console.log(columns);
+      setConnectionSchema(columns)
+    }
+
+    fetchTables();
+  }, [selectedConnectionInfo, setConnectionSchema, fetchConnTables])
+
+  /*
   ------------------------
   UseEfffect que se ejecuta una vez al cargar la pagina para obtener los pools.
   ------------------------
@@ -240,23 +318,44 @@ export default function Dashboard() {
 
       <CreateTableModal
         isOpen={isCreateTableModalOpen}
-        onClose={(query?: string) => {
+        onClose={async (query?: string) => {
           if (!query) return;
-          console.warn(query)
           setIsCreateTableModalOpen(false)
+
+          const res = await fetch("/api/connections", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              poolId: selectedConnectionId,
+              query: "own",
+              sqlQuery: query,
+            }),
+          })
+
+          const data = await res.json();
+          if (!res.ok) {
+            console.error(data)
+            alert("Error al crear la tabla.");
+            return;
+          }
+
+          alert("Tabla creada exitosamente.");
         }}
         onCancel={() => { setIsCreateTableModalOpen(false) }}
 
 
       />
 
+      <EditTableModal columnsData={connectionSchema} isOpen={isEditTableModalOpen} />
       <NewConnectionPopup create_connection={createPool} />
       <main className="text-black pt-2 overflow-x-hidden">
         <div className='float-top w-auto h-fit'>
 
           <div className="bg-red w-fit h-fit p-4 rounded shadow-md ml-2">
             {(selectedConnectionId != -1) ? <h1>Estado de Conexion</h1> : <></>}
-            {(selectedConnectionId != -1) ? ((isPoolConnected) ? <h1>Conectado</h1> : <div className="flex flex-row gap-y-1"><h1>Desconectado</h1> <Button action={() => { connect() }} id={`connect-${selectedConnectionId}`} text="Conectar" variant='primary' /> </div>) : <></>}
+            {(selectedConnectionId != -1) ? ((isPoolConnected) ? <h1>Conectado</h1> : <div className="flex flex-row gap-y-1"><h1>Desconectado</h1> <Button action={() => { connect() }} id={`connect - ${selectedConnectionId}`} text="Conectar" variant='primary' /> </div>) : <></>}
             <br />
             {(!selectedConnectionInfo) ? (<h1>Selecciona una conexion</h1>) : <h1>{selectedConnectionInfo.user}@{selectedConnectionInfo.host}:{selectedConnectionInfo.port}</h1>}
           </div>
@@ -265,6 +364,7 @@ export default function Dashboard() {
         {(isPoolConnected) ? (
           <div className='flex flex-row gap-x-2'>
             <Button action={() => { setIsCreateTableModalOpen(true) }} id='create-table' text='Crear Tabla' variant='primary' />
+            <Button action={() => { setIsEditTableModalOpen(true) }} id='create-table' text='Editar Tabla' variant='warning' />
           </div>
         ) : <></>}
 
