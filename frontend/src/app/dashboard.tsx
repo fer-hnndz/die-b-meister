@@ -349,8 +349,7 @@ export default function Dashboard() {
       />
 
       <EditTableModal columnsData={connectionSchema} isOpen={isEditTableModalOpen} />
-      <NewConnectionPopup create_connection={createPool} />
-      <main className="text-black pt-2 overflow-x-hidden">
+      <main className="z-1 text-black pt-2 overflow-x-hidden">
         <div className='float-top w-auto h-fit'>
 
           <div className="bg-red w-fit h-fit p-4 rounded shadow-md ml-2">
@@ -369,7 +368,7 @@ export default function Dashboard() {
         ) : <></>}
 
         {/* Sección de consultas */}
-        <div className='flex flex-col h-2/5 absolute overflow-x-hidden bottom-2 border-t w-10/12 bg-pale'>
+        <div className='flex flex-col z-1 h-2/5 sticky top-2/3 w-screen overflow-x-hidden bottom-2 border-t bg-pale'>
           <div className='flex flex-row align-middle mt-4 ml-2 gap-x-4 mb-2'>
             <label htmlFor="query-dropdown" className="block mb-2 text-lg">Seleccionar Consulta</label>
             <select
@@ -395,6 +394,8 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+      <NewConnectionPopup create_connection={createPool} />
+
     </div>
   )
 }

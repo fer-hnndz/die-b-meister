@@ -29,7 +29,7 @@ export default function NewConnectionPopup({ create_connection }: { create_conne
     }
 
     return (
-        <div id="newConnectionModal" className="hidden z-0 absolute h-screen w-screen overflow-clip bg-black bg-opacity-60 flex items-center content-center justify-center">
+        <div id="newConnectionModal" className="hidden z-2 absolute flex h-screen w-screen overflow-clip bg-black bg-opacity-60 items-center content-center justify-center">
             <div className="w-2/3 h-2/3 absolute rounded-lg shadow bg-white">
                 <h1 className="font-bold text-3xl text-center text-black mt-4">Nueva Conexión</h1>
                 <div className="flex flex-col gap-y-3 items-center mt-8">
