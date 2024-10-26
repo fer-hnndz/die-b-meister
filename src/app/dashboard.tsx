@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Sidebar from '../components/sidebar'
 import NewConnectionPopup from '../modals/new-connection-popup'
 import { PoolData } from '../interfaces'
@@ -12,7 +12,7 @@ export default function Dashboard() {
   const [pools, setPools] = useState<PoolData[]>([])
 
   // Store queries/actions for the connection
-  const [selectedQuery, setSelectedQuery] = useState<string>('')
+  const [selectedQuery, setSelectedQuery] = useState<string>('tables')
   const [queryHeaders, setQueryHeaders] = useState<string[]>([]);
   const [queryData, setQueryData] = useState<string[]>([]);
 
@@ -86,6 +86,11 @@ export default function Dashboard() {
     }
   }
 
+  /*
+  ========================
+  Función para conectar a una base de datos
+  ========================
+  */
   async function connect() {
     try {
       const password = prompt("Ingrese la contraseña de la DB");
@@ -116,23 +121,13 @@ export default function Dashboard() {
     }
   }
 
-  // Funcion que usa Sidebar para actualizar la conexión seleccionada
-  function updateSelectedPool(poolId: number) {
-    console.log("Updating selected conn to ", poolId)
-    setSelectedConnectionId(poolId);
-  }
 
-  // Cargar los pools de conexión al cargar la página
-  useEffect(() => {
-    fetch('/api/pool').then(async (response) => {
-      if (!response.ok) alert("Error al cargar las conexiones existentes.");
-      const data = await response.json();
-      console.log(data, typeof data);
-      setPools(JSON.parse(data));
-    })
-  }, []);
-
-  // Fetch all pool info when a connection is selected
+  /*
+  ------------------------
+  Obtener información de la conexión seleccionada para 
+  mostarlo y poder conectarlo si el user desea
+  ------------------------
+  */
   useEffect(() => {
     async function fetchConnectionInfo() {
       console.log("Fetching connection info...");
@@ -151,14 +146,18 @@ export default function Dashboard() {
     fetchConnectionInfo()
   }, [selectedConnectionId])
 
-  async function executeQuery() {
+
+  /*
+  ========================
+  Callback para ejecutar una consulta.
+  Wrappeada en un useCallback para evitar que se ejecute en cada renderizado.
+  ========================
+  */
+  const executeQuery = useCallback(async () => {
     const query = selectedQuery;
     const poolId = selectedConnectionId;
 
-    if (query === "" || poolId === -1) {
-      alert("Selecciona una conexión y una consulta.");
-      return;
-    }
+    if (poolId === -1 || !isPoolConnected) return;
 
     const res = await fetch("/api/connections", {
       method: "PUT",
@@ -173,6 +172,7 @@ export default function Dashboard() {
 
     if (!res.ok) {
       if (res.status === 404) {
+        console.log(await res.json());
         alert("Error al ejecutar la consulta. Se ha interrumpido la conexión.");
         setIsPoolConnected(false);
         return
@@ -188,36 +188,57 @@ export default function Dashboard() {
     }
     setQueryHeaders(data.headers);
     setQueryData(data.data)
+  }, [selectedQuery, selectedConnectionId, isPoolConnected])
+
+  /*
+  ------------------------
+  UseEffect que se ejecuta al cambiar la consulta seleccionada.
+  Se encarga de ejecutar la consulta cuando esta cambia.
+  ------------------------
+  */
+  useEffect(() => {
+    async function exec() {
+      executeQuery();
+    }
+
+    exec();
+  }, [selectedQuery, executeQuery])
+
+  /*
+  *****************
+  Funcion Helper donde el sidebar llama a esta funcion para actualizar la conexión seleccionada.
+  *****************
+  */
+  function updateSelectedPool(poolId: number) {
+    console.log("Updating selected conn to ", poolId)
+    setSelectedConnectionId(poolId);
+    setIsPoolConnected(false);
   }
+
+  /*
+  ------------------------
+  UseEfffect que se ejecuta una vez al cargar la pagina para obtener los pools.
+  ------------------------
+  */
+  useEffect(() => {
+    fetch('/api/pool').then(async (response) => {
+      if (!response.ok) alert("Error al cargar las conexiones existentes.");
+      const data = await response.json();
+      console.log(data, typeof data);
+      setPools(JSON.parse(data));
+    })
+  }, []);
+
 
   return (
     <div className='flex flex-row'>
       <Sidebar pools={pools} onSelectPool={updateSelectedPool} />
 
       <NewConnectionPopup create_connection={createPool} />
-      <main className="text-black pl-4 pt-2">
+      <main className="text-black pt-2 overflow-x-hidden">
         <div className='float-top w-auto h-fit'>
-          <label htmlFor="query-dropdown" className="block mb-2">Selecciona una consulta:</label>
-          <select
-            id="query-dropdown"
-            className="border border-gray-300 p-2"
-            value={selectedQuery}
-            onChange={(e) => setSelectedQuery(e.target.value)}
-          >
-            <option value="">-- Seleccionar consulta --</option>
-            <option value="tables">Listar Tablas</option>
-            <option value="pk">Listar Llaves Primarias</option>
-            <option value="fk">Listar Llaves Foráneas</option>
-            <option value="indices">Listar Índices</option>
-            <option value="procedures">Listar Store Procedures</option>
-            <option value="triggers">Listar Triggers</option>
-            <option value="views">Listar Vistas</option>
-            <option value="checks">Listar Checks</option>
-          </select>
 
-          <Button text="Ejecutar" variant='primary' action={executeQuery} />
-
-          <div className="bg-red w-fit h-fit p-4 rounded shadow-md">
+          <div className="bg-red w-fit h-fit p-4 rounded shadow-md ml-2">
             {(selectedConnectionId != -1) ? <h1>Estado de Conexion</h1> : <></>}
             {(selectedConnectionId != -1) ? ((isPoolConnected) ? <h1>Conectado</h1> : <div className="flex flex-row gap-y-1"><h1>Desconectado</h1> <Button action={() => { connect() }} id={`connect-${selectedConnectionId}`} text="Conectar" variant='primary' /> </div>) : <></>}
             <br />
@@ -225,7 +246,32 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <DataTable headers={queryHeaders} data={queryData} />
+        {/* Sección de consultas */}
+        <div className='flex flex-col h-2/5 absolute overflow-x-hidden bottom-2 border-t w-10/12 bg-pale'>
+          <div className='flex flex-row align-middle mt-4 ml-2 gap-x-4 mb-2'>
+            <label htmlFor="query-dropdown" className="block mb-2 text-lg">Seleccionar Consulta</label>
+            <select
+              id="query-dropdown"
+              className="border border-gray-300 p-2"
+
+              value={selectedQuery}
+              onChange={(e) => setSelectedQuery(e.target.value)}
+            >
+              <option value="tables">Listar Tablas</option>
+              <option value="pk">Listar Llaves Primarias</option>
+              <option value="fk">Listar Llaves Foráneas</option>
+              <option value="indices">Listar Índices</option>
+              <option value="procedures">Listar Store Procedures</option>
+              <option value="triggers">Listar Triggers</option>
+              <option value="views">Listar Vistas</option>
+              <option value="checks">Listar Checks</option>
+            </select>
+          </div>
+
+          <div className="overflow-y-scroll w-fit">
+            <DataTable headers={queryHeaders} data={queryData} />
+          </div>
+        </div>
       </main>
     </div>
   )
