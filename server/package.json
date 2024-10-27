@@ -1,0 +1,23 @@
+{
+  "name": "meister-server",
+  "version": "1.0.0",
+  "description": "Backend for die-b-meister",
+  "main": "app.ts",
+  "repository": "git@github.com:fer-hnndz/die-b-meister.git",
+  "author": "fer-hnndz <65425622+fer-hnndz@users.noreply.github.com>",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.21.1",
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "mariadb": "^3.4.0",
+    "nodemon": "^3.1.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  },
+  "scripts": {
+    "dev": "nodemon --exec ts-node app.ts"
+  }
+}

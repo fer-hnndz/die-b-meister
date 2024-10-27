@@ -385,6 +385,7 @@ export default function Dashboard() {
               <option value="procedures">Listar Store Procedures</option>
               <option value="triggers">Listar Triggers</option>
               <option value="views">Listar Vistas</option>
+              <NewConnectionPopup create_connection={createPool} />
               <option value="checks">Listar Checks</option>
             </select>
           </div>
