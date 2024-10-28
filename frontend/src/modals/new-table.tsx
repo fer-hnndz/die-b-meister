@@ -46,9 +46,8 @@ export default function CreateTableModal({ isOpen, onClose, onCancel }: CreateTa
             let def = `${col.name} ${col.type}`;
             if (col.defaultValue) {
                 if (col.type === "BOOLEAN" || col.type === "INT") def += ` DEFAULT ${col.defaultValue}`;
-                else def += ` DEFAULT '${col.defaultValue}'`
-
-            };
+                else def += ` DEFAULT '${col.defaultValue}'`;
+            }
             if (col.nullable) def += " NULL";
             else def += " NOT NULL";
             return def;
@@ -72,7 +71,6 @@ export default function CreateTableModal({ isOpen, onClose, onCancel }: CreateTa
 
     const handleCreateTable = () => {
         const query = generateQuery();
-        console.log(query, "from component");
         onClose(query);
         resetForm();
     };
@@ -118,7 +116,6 @@ export default function CreateTableModal({ isOpen, onClose, onCancel }: CreateTa
                                         <option>INT</option>
                                         <option>BOOLEAN</option>
                                         <option>DATE</option>
-                                        <option>DECIMAL(10,2)</option>
                                     </select>
                                 </label>
 
@@ -188,4 +185,4 @@ export default function CreateTableModal({ isOpen, onClose, onCancel }: CreateTa
             </div>
         </Dialog>
     );
-}
+} 

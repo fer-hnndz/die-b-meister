@@ -71,6 +71,7 @@ export async function createConnectionService(poolId: number, password: string) 
             password: password,
             database: poolData.database,
             bigIntAsNumber: true,
+            decimalAsNumber: true
         });
 
         return await pool.getConnection();
@@ -95,9 +96,8 @@ export async function retrieveDBInfoService(poolId: number, query: string, conn:
         if (!queryInfo) throw new Error("Query not found");
 
         sqlQuery = `SELECT ${queryInfo.columns.join(", ")} FROM ${queryInfo.table.replace("DB_NAME", databaseName)} ${queryInfo.where ? `WHERE ${queryInfo.where.replace("DB_NAME", databaseName)}` : ""}`;
-        console.log(sqlQuery);
 
-        const rows = await conn.query(query);
+        const rows = await conn.query(sqlQuery);
         if (rows.length === 0) return {
             headers: queryInfo.columns.map(column => (column.replace("_", " ").toUpperCase())),
             data: []

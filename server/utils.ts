@@ -12,7 +12,7 @@ const defaultPoolJSON = {
 */
 export function checkIfFileExists() {
     try {
-        fs.accessSync("pools.json", fs.constants.F_OK);
+        fs.readFileSync("pools.json", "utf-8");
     } catch {
         fs.writeFileSync("pools.json", JSON.stringify(defaultPoolJSON));
     }
@@ -49,10 +49,13 @@ export function savePool(host: string, user: string, port: number, database: str
  * 
  * @returns Returns the pools stored in the pools.json file.
  */
-export function getPools() {
+export function getPools(): PoolData[] {
     checkIfFileExists();
     const poolsJson = fs.readFileSync("pools.json", "utf-8");
-    return JSON.parse(poolsJson).pools;
+    const data = JSON.parse(poolsJson).pools;
+
+    // parse to array
+    return data;
 }
 
 /**
@@ -60,8 +63,7 @@ export function getPools() {
  * @param poolId The ID of the pool to retrieve.
  * @returns The pool with the given ID.
  */
-export function getPoolById(poolId: number) {
+export function getPoolById(poolId: number): PoolData | undefined {
     const pools: PoolData[] = getPools();
-    console.log(pools);
     return pools.find(pool => pool.id === poolId);
 }

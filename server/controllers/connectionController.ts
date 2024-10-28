@@ -22,10 +22,10 @@ export async function createConnectionController(req: Request, res: Response) {
 
 export async function isConnectedController(req: Request, res: Response) {
     try {
-        const { poolId } = req.query as unknown as { poolId: number };
-        const connection = connections.get(poolId);
+        const { poolId } = req.query as unknown as { poolId: string };
+        const connection = connections.get(parseInt(poolId));
 
-        if (!connection) return res.status(404).json({ isConnected: false });
+        if (!connection) return res.status(200).json({ isConnected: false });
 
         return res.status(200).json({ isConnected: true });
     } catch (err) {
@@ -35,11 +35,11 @@ export async function isConnectedController(req: Request, res: Response) {
 }
 
 // Controller para recuperar información de la base de datos
-export async function retrieveDBInfoController(req: Request, res: Response) {
+export async function retrieveDBInfoController(req: Request<{}, {}, { poolId: number; query: string }, {}>, res: Response) {
     try {
 
         // Typescript en sus sabiduria infinita...
-        const { poolId, query } = req.query as unknown as { poolId: number; query: string };
+        const { poolId, query } = req.body;
         const connection = connections.get(poolId);
 
         if (!connection) return res.status(404).json({ error: "Connection not found" });
@@ -55,12 +55,14 @@ export async function retrieveDBInfoController(req: Request, res: Response) {
 // Controller para ejecutar una consulta
 export async function executeQueryController(req: Request, res: Response) {
     try {
-        const { query, poolId } = req.body as { query: string; poolId: number };
+        const { sqlQuery, poolId } = req.body as { sqlQuery: string; poolId: number };
         const connection = connections.get(poolId);
 
         if (!connection) return res.status(404).json({ error: "Connection not found" });
+        const rows = await connection.query(sqlQuery);
 
-        const rows = await connection.query(query);
+        if (sqlQuery.startsWith("CREATE")) return res.status(200).json({ message: "Query executed successfully" });
+
         return res.status(200).json(rows);
     } catch (err) {
         console.error(err);

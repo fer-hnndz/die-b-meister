@@ -47,3 +47,8 @@ export async function createPoolService(host: string, user: string, password: st
         return { error: 'Error creando el pool', details: err };
     }
 }
+
+export async function getPoolsService() {
+    checkIfFileExists();
+    return getPools();
+}
