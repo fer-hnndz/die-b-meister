@@ -75,6 +75,7 @@ export default function CreateTableModal({ isOpen, onClose, onCancel }: CreateTa
         resetForm();
     };
 
+
     return (
         <Dialog open={isOpen} onClose={() => { }} className="fixed inset-0 z-10 overflow-y-auto">
             <div className="flex items-center justify-center min-h-screen px-4">

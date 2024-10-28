@@ -61,7 +61,7 @@ export async function executeQueryController(req: Request, res: Response) {
         if (!connection) return res.status(404).json({ error: "Connection not found" });
         const rows = await connection.query(sqlQuery);
 
-        if (sqlQuery.startsWith("CREATE")) return res.status(200).json({ message: "Query executed successfully" });
+        if (sqlQuery.startsWith("CREATE") || sqlQuery.startsWith("ALTER") || sqlQuery.startsWith("DROP")) return res.status(200).json({ message: "Query executed successfully" });
 
         return res.status(200).json(rows);
     } catch (err) {

@@ -110,7 +110,7 @@ export default function CreateTablePage() {
         router.push("/");
     };
 
-    const handleCreateTable = () => {
+    async function handleCreateTable() {
         if (!tableName) {
             alert("Por favor, ingresa un nombre para la tabla.");
             return;
@@ -122,9 +122,25 @@ export default function CreateTablePage() {
             return;
         }
 
-        const query = generateQuery();
-        console.log("SQL Query:", query);
-        // Aquí podrías implementar la lógica para ejecutar la consulta usando `connectionInfo`
+
+        const res = await fetch(`http://localhost:3001/connection/execute`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                poolId,
+                sqlQuery: generateQuery(),
+            }),
+        })
+
+        if (!res.ok) {
+            alert("Error al crear la tabla.");
+            return
+        }
+
+        alert("Tabla creada exitosamente.");
+        router.push("/");
         resetForm();
     };
 
