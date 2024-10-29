@@ -333,7 +333,7 @@ export default function Dashboard() {
         {(isPoolConnected) ? (
           <div className='flex flex-row gap-x-2'>
             <Button action={() => { router.push(`/new-table/${selectedConnectionInfo?.id}`) }} id='create-table' text='Crear Tabla' variant='primary' />
-            <Button action={() => { setIsEditTableModalOpen(true) }} id='create-table' text='Editar Tabla' variant='warning' />
+            <Button action={() => { router.push(`/edit-table/${selectedConnectionInfo?.id}`) }} id='create-table' text='Editar Tabla' variant='warning' />
           </div>
         ) : <></>}
 
