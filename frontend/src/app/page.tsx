@@ -30,6 +30,17 @@ export default function Dashboard() {
   const [isPoolConnected, setIsPoolConnected] = useState<boolean>(false);
   const [connectionSchema, setConnectionSchema] = useState<string[]>([]);
 
+  const [selectedActionType, setSelectedActionType] = useState('table');
+
+  const actionTypes = [
+    { value: 'table', label: 'Tabla' },
+    { value: 'function', label: 'Función/Store Procedure' },
+    { value: 'index', label: 'Índice' },
+    { value: 'trigger', label: 'Trigger' },
+    { value: 'check', label: 'Check' },
+    { value: 'view', label: 'Vista' },
+  ];
+
   const router = useRouter();
   // Funcion que utiliza el popup para crear una nueva conexión
   // Esta accede a la API para guardar las creds (excepto la pass) 
@@ -330,12 +341,67 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {(isPoolConnected) ? (
-          <div className='flex flex-row gap-x-2'>
-            <Button action={() => { router.push(`/new-table/${selectedConnectionInfo?.id}`) }} id='create-table' text='Crear Tabla' variant='primary' />
-            <Button action={() => { router.push(`/edit-table/${selectedConnectionInfo?.id}`) }} id='create-table' text='Editar Tabla' variant='warning' />
+        <label htmlFor="action-type" className="mr-2">Seleccionar Tipo de Acción:</label>
+        <select
+          id="action-type"
+          className="border border-gray-300 p-2"
+          value={selectedActionType}
+          onChange={(e) => setSelectedActionType(e.target.value)}
+        >
+          {actionTypes.map((action) => (
+            <option key={action.value} value={action.value}>
+              {action.label}
+            </option>
+          ))}
+        </select>
+
+        {(isPoolConnected) && (
+          <div className='flex flex-row gap-x-2 mt-4'>
+            {selectedActionType === 'table' && (
+              <>
+                <Button action={() => { router.push(`/new-table/${selectedConnectionInfo?.id}`) }} id='create-table' text='Crear Tabla' variant='primary' />
+                <Button action={() => { router.push(`/edit-table/${selectedConnectionInfo?.id}`) }} id='edit-table' text='Editar Tabla' variant='warning' />
+                <Button action={() => { router.push(`/delete-table/${selectedConnectionInfo?.id}`) }} id='delete-table' text='Borrar Tabla' variant='danger' />
+              </>
+            )}
+            {selectedActionType === 'function' && (
+              <>
+                <Button action={() => { router.push(`/new-function/${selectedConnectionInfo?.id}`) }} id='create-function' text='Crear Función/Store Procedure' variant='primary' />
+                <Button action={() => { router.push(`/edit-function/${selectedConnectionInfo?.id}`) }} id='edit-function' text='Editar Función/Store Procedure' variant='warning' />
+                <Button action={() => { router.push(`/delete-function/${selectedConnectionInfo?.id}`) }} id='delete-function' text='Borrar Función/Store Procedure3' variant='danger' />
+              </>
+            )}
+            {selectedActionType === 'index' && (
+              <>
+                <Button action={() => { router.push(`/new-index/${selectedConnectionInfo?.id}`) }} id='create-index' text='Crear Índice' variant='primary' />
+                <Button action={() => { router.push(`/edit-index/${selectedConnectionInfo?.id}`) }} id='edit-index' text='Editar Índice' variant='warning' />
+                <Button action={() => { router.push(`/delete-index/${selectedConnectionInfo?.id}`) }} id='delete-index' text='Borrar Índice' variant='danger' />
+              </>
+            )}
+            {selectedActionType === 'trigger' && (
+              <>
+                <Button action={() => { router.push(`/new-trigger/${selectedConnectionInfo?.id}`) }} id='create-trigger' text='Crear Trigger' variant='primary' />
+                <Button action={() => { router.push(`/edit-trigger/${selectedConnectionInfo?.id}`) }} id='edit-trigger' text='Editar Trigger' variant='warning' />
+                <Button action={() => { router.push(`/delete-trigger/${selectedConnectionInfo?.id}`) }} id='delete-trigger' text='Borrar Trigger' variant='danger' />
+              </>
+            )}
+            {selectedActionType === 'check' && (
+              <>
+                <Button action={() => { router.push(`/new-check/${selectedConnectionInfo?.id}`) }} id='create-check' text='Crear Check' variant='primary' />
+                <Button action={() => { router.push(`/edit-check/${selectedConnectionInfo?.id}`) }} id='edit-check' text='Editar Check' variant='warning' />
+                <Button action={() => { router.push(`/delete-check/${selectedConnectionInfo?.id}`) }} id='delete-check' text='Borrar Check' variant='danger' />
+              </>
+            )}
+            {selectedActionType === 'view' && (
+              <>
+                <Button action={() => { router.push(`/new-view/${selectedConnectionInfo?.id}`) }} id='create-view' text='Crear Vista' variant='primary' />
+                <Button action={() => { router.push(`/edit-view/${selectedConnectionInfo?.id}`) }} id='edit-view' text='Editar Vista' variant='warning' />
+                <Button action={() => { router.push(`/delete-view/${selectedConnectionInfo?.id}`) }} id='delete-view' text='Borrar Vista' variant='danger' />
+              </>
+            )}
           </div>
-        ) : <></>}
+        )}
+
 
         {/* Sección de consultas */}
         <div className='flex flex-col z-1 h-2/5 sticky top-2/3 w-screen overflow-x-hidden bottom-2 border-t bg-pale'>

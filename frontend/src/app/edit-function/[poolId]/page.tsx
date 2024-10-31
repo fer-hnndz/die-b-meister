@@ -26,9 +26,14 @@ export default function EditFunctionPage() {
     const [functionBody, setFunctionBody] = useState<string>("");
     const [parameters, setParameters] = useState<Parameter[]>([]);
     const [returnType, setReturnType] = useState<string>("");
-    const [functionsList, setFunctionsList] = useState<string[]>([]);
+    const [functionsList, setFunctionsList] = useState<{ name: string, isFunc: boolean }[]>([]);
+    const [isFunction, setIsFunction] = useState<boolean>(true); // Determina si es una función o procedimiento
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [editQuery, setEditQuery] = useState<string>("");
+
+
+    const dataTypes = ["INT", "VARCHAR(100)", "DATE", "FLOAT", "BOOLEAN"]; // Tipos de datos comunes
 
     useEffect(() => {
         const fetchConnectionInfo = async () => {
@@ -43,15 +48,14 @@ export default function EditFunctionPage() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         poolId: poolId,
-                        sqlQuery: `SELECT ROUTINE_NAME FROM information_schema.ROUTINES WHERE ROUTINE_TYPE = 'FUNCTION' AND ROUTINE_SCHEMA = '${data.database}';`,
+                        sqlQuery: `SELECT ROUTINE_TYPE, ROUTINE_NAME FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = '${data.database}';`,
                     }),
                 });
 
                 if (!functionsRes.ok) throw new Error("Error al obtener la lista de funciones.");
                 const functionsData = await functionsRes.json();
-                const functionNames = functionsData.map((row: any) => row.ROUTINE_NAME);
+                const functionNames = functionsData.map((row: any) => ({ name: row.ROUTINE_NAME, isFunc: row.ROUTINE_TYPE === "FUNCTION" }));
                 setFunctionsList(functionNames);
-                console.log("Lista de funciones obtenida", functionNames)
             } catch (err: any) {
                 setError(err.message);
             }
@@ -64,7 +68,6 @@ export default function EditFunctionPage() {
     useEffect(() => {
         const fetchFunctionDetails = async (name: string) => {
             try {
-
                 if (!name) {
                     setFunctionBody("");
                     setParameters([]);
@@ -72,9 +75,7 @@ export default function EditFunctionPage() {
                     return;
                 }
 
-                const sql = `SELECT ROUTINE_DEFINITION FROM information_schema.ROUTINES WHERE ROUTINE_NAME = '${functionName}' AND ROUTINE_TYPE = 'FUNCTION' AND ROUTINE_SCHEMA = '${connectionInfo?.database}';`
-                console.log(sql)
-                // Obtener cuerpo de la función
+                const sql = `SELECT ROUTINE_DEFINITION FROM information_schema.ROUTINES WHERE ROUTINE_NAME = '${functionName}' AND ROUTINE_SCHEMA = '${connectionInfo?.database}';`;
                 const functionRes = await fetch(`http://localhost:3001/connection/execute`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -86,11 +87,8 @@ export default function EditFunctionPage() {
 
                 if (!functionRes.ok) throw new Error("Error al obtener el cuerpo de la función.");
                 const functionData = await functionRes.json();
-                console.log("Function Data", functionData);
-                const functionDefinition = functionData[0].ROUTINE_DEFINITION; // Cambiado a índice 2 para obtener el cuerpo
-                setFunctionBody(functionDefinition);
+                setFunctionBody(functionData[0].ROUTINE_DEFINITION);
 
-                // Obtener parámetros
                 const paramsRes = await fetch(`http://localhost:3001/connection/execute`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -98,23 +96,19 @@ export default function EditFunctionPage() {
                         poolId: poolId,
                         sqlQuery: `SELECT PARAMETER_NAME, DATA_TYPE 
                                     FROM information_schema.PARAMETERS 
-                                    WHERE SPECIFIC_NAME = '${name}' 
-                                    AND ROUTINE_TYPE = 'FUNCTION';`,
+                                    WHERE SPECIFIC_NAME = '${name}'`,
                     }),
                 });
 
                 if (!paramsRes.ok) throw new Error("Error al obtener los parámetros de la función.");
                 const paramsData = await paramsRes.json();
-                console.log("Params Data", paramsData);
                 const parsedParams = paramsData.filter((parameter) => parameter.PARAMETER_NAME != null).map((row: any) => ({
                     name: row.PARAMETER_NAME,
                     type: row.DATA_TYPE,
                 }));
 
                 setParameters(parsedParams);
-                setReturnType(paramsData[0].DATA_TYPE);
 
-                // Obtener tipo de retorno
                 const returnTypeRes = await fetch(`http://localhost:3001/connection/execute`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -122,8 +116,7 @@ export default function EditFunctionPage() {
                         poolId: poolId,
                         sqlQuery: `SELECT DATA_TYPE 
                                     FROM information_schema.ROUTINES 
-                                    WHERE ROUTINE_NAME = '${name}' 
-                                    AND ROUTINE_TYPE = 'FUNCTION';`,
+                                    WHERE ROUTINE_NAME = '${name}'`,
                     }),
                 });
 
@@ -136,8 +129,29 @@ export default function EditFunctionPage() {
         };
 
         fetchFunctionDetails(functionName)
-    }, [functionName])
+    }, [functionName]);
 
+    const handleAddParameter = () => {
+        setParameters([...parameters, { name: "", type: dataTypes[0] }]);
+    };
+
+    const handleRemoveParameter = (index: number) => {
+        setParameters(parameters.filter((_, i) => i !== index));
+    };
+
+    const handleParameterChange = (index: number, field: keyof Parameter, value: string) => {
+        const updatedParameters = [...parameters];
+        updatedParameters[index][field] = value;
+        setParameters(updatedParameters);
+    };
+
+    const generateQuery = (): string => {
+        const paramString = parameters.map(param => `${param.name} ${param.type}`).join(", ");
+        const returnStatement = isFunction ? `RETURNS ${returnType}` : "";
+        const routineType = isFunction ? "FUNCTION" : "PROCEDURE";
+
+        return `CREATE ${routineType} ${functionName}(${paramString}) ${returnStatement} BEGIN \n${sqlQuery} \nEND;`;
+    };
 
     const handleUpdateFunction = async () => {
         if (!functionBody) {
@@ -145,12 +159,15 @@ export default function EditFunctionPage() {
             return;
         }
 
+        const query = `DROP FUNCTION IF EXISTS ${functionName}; ${functionBody}`;
+        setEditQuery(query); // Establecer el query a mostrar
+
         const res = await fetch(`http://localhost:3001/connection/execute`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 poolId,
-                sqlQuery: `DROP FUNCTION IF EXISTS ${functionName}; ${functionBody}`,
+                sqlQuery: query,
             }),
         });
 
@@ -161,6 +178,15 @@ export default function EditFunctionPage() {
             alert("Error al actualizar la función.");
         }
     };
+
+
+    async function handleFunctionChange(funcName: string) {
+        setFunctionName(funcName);
+        const foundFunc = functionsList.find((func) => func.name === funcName)
+
+        if (!foundFunc) throw new Error("guaya")
+        setIsFunction(foundFunc.isFunc);
+    }
 
     if (loading) return <div>Cargando información de conexión...</div>;
     if (error) return <div>Error: {error}</div>;
@@ -175,13 +201,13 @@ export default function EditFunctionPage() {
             <label className="block text-sm font-medium mb-2">Selecciona una Función</label>
             <select
                 value={functionName}
-                onChange={(e) => setFunctionName(e.target.value)}
+                onChange={(e) => handleFunctionChange(e.target.value)}
                 className="mt-1 p-2 w-full border rounded"
             >
                 <option value="">Selecciona una función</option>
                 {functionsList.map((func) => (
-                    <option key={func} value={func}>
-                        {func}
+                    <option key={func.name} value={func.name}>
+                        {func.name}
                     </option>
                 ))}
             </select>
@@ -194,14 +220,57 @@ export default function EditFunctionPage() {
                 className="mt-1 p-2 w-full border rounded h-32"
             />
 
+            <label className="block text-sm font-medium mt-4">Tipo de Retorno</label>
+            <select
+                value={returnType}
+                onChange={(e) => setReturnType(e.target.value)}
+                className="mt-1 p-2 w-full border rounded"
+            >
+                {dataTypes.map((type) => (
+                    <option key={type} value={type}>
+                        {type}
+                    </option>
+                ))}
+            </select>
+
             <h3 className="text-lg font-medium mt-4">Parámetros</h3>
             <ul className="list-disc ml-6">
-                {parameters.map((param) => (
-                    <li key={param.name}>
-                        {param.name} ({param.type})
+                {parameters.map((param, index) => (
+                    <li key={index} className="mb-2">
+                        <input
+                            type="text"
+                            placeholder="Nombre del parámetro"
+                            value={param.name}
+                            onChange={(e) => handleParameterChange(index, "name", e.target.value)}
+                            className="mr-2 p-1 border rounded"
+                        />
+                        <select
+                            value={param.type}
+                            onChange={(e) => handleParameterChange(index, "type", e.target.value)}
+                            className="mr-2 p-1 border rounded"
+                        >
+                            {dataTypes.map((type) => (
+                                <option key={type} value={type}>
+                                    {type}
+                                </option>
+                            ))}
+                        </select>
+                        <button onClick={() => handleRemoveParameter(index)} className="text-red-500">Eliminar</button>
                     </li>
                 ))}
             </ul>
+            <button
+                onClick={handleAddParameter}
+                className={`mt-2 p-1 text-blue-500 ${!functionName ? "opacity-50 cursor-not-allowed" : ""}`}
+                disabled={!functionName}
+            >
+                Añadir Parámetro
+            </button>
+
+            <div className="mt-4">
+                <h3 className="text-lg font-medium">Consulta SQL para actualizar la función:</h3>
+                <pre className="bg-gray-100 p-2 border rounded">{editQuery}</pre>
+            </div>
 
             <div className="mt-4 flex justify-end">
                 <button
