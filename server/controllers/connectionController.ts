@@ -59,9 +59,10 @@ export async function executeQueryController(req: Request, res: Response) {
         const connection = connections.get(poolId);
 
         if (!connection) return res.status(404).json({ error: "Connection not found" });
-        const rows = await connection.query(sqlQuery);
+        const rows = await connection.query(sqlQuery.trim());
 
-        if (sqlQuery.startsWith("CREATE") || sqlQuery.startsWith("ALTER") || sqlQuery.startsWith("DROP")) return res.status(200).json({ message: "Query executed successfully" });
+        console.log("[execute] ", sqlQuery); 3
+        if (sqlQuery.trim().startsWith("CREATE") || sqlQuery.trim().startsWith("ALTER") || sqlQuery.trim().startsWith("DROP")) return res.status(200).json({ message: "Query executed successfully" });
 
         return res.status(200).json(rows);
     } catch (err) {

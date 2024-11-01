@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { isNotFoundError } from "next/dist/client/components/not-found";
 
 interface ConnectionInfo {
     id: number;
@@ -54,8 +55,11 @@ export default function EditFunctionPage() {
 
                 if (!functionsRes.ok) throw new Error("Error al obtener la lista de funciones.");
                 const functionsData = await functionsRes.json();
+                console.warn(functionsData)
                 const functionNames = functionsData.map((row: any) => ({ name: row.ROUTINE_NAME, isFunc: row.ROUTINE_TYPE === "FUNCTION" }));
                 setFunctionsList(functionNames);
+
+                console.log(functionNames)
             } catch (err: any) {
                 setError(err.message);
             }
@@ -74,6 +78,10 @@ export default function EditFunctionPage() {
                     setReturnType("");
                     return;
                 }
+
+                const func = functionsList.find((func) => func.name === name)
+                if (!func) throw new Error("No se encontró la función.");
+                setIsFunction(func.isFunc);
 
                 const sql = `SELECT ROUTINE_DEFINITION FROM information_schema.ROUTINES WHERE ROUTINE_NAME = '${functionName}' AND ROUTINE_SCHEMA = '${connectionInfo?.database}';`;
                 const functionRes = await fetch(`http://localhost:3001/connection/execute`, {
@@ -107,6 +115,8 @@ export default function EditFunctionPage() {
                     type: row.DATA_TYPE,
                 }));
 
+                const returnType = paramsData.find((param: any) => param.PARAMETER_NAME === null)
+                setReturnType((returnType) ? returnType.DATA_TYPE : "");
                 setParameters(parsedParams);
 
                 const returnTypeRes = await fetch(`http://localhost:3001/connection/execute`, {
@@ -124,6 +134,7 @@ export default function EditFunctionPage() {
                 const returnTypeData = await returnTypeRes.json();
                 setReturnType(returnTypeData[0].DATA_TYPE);
             } catch (err: any) {
+                console.error(err)
                 setError(err.message);
             }
         };
@@ -145,22 +156,28 @@ export default function EditFunctionPage() {
         setParameters(updatedParameters);
     };
 
-    const generateQuery = (): string => {
-        const paramString = parameters.map(param => `${param.name} ${param.type}`).join(", ");
-        const returnStatement = isFunction ? `RETURNS ${returnType}` : "";
-        const routineType = isFunction ? "FUNCTION" : "PROCEDURE";
+    useEffect(() => {
+        const generateQuery = (): string => {
+            const paramString = parameters.map(param => `${param.name} ${param.type}`).join(", ");
+            const returnStatement = isFunction ? `RETURNS ${returnType}` : "";
+            const routineType = isFunction ? "FUNCTION" : "PROCEDURE";
 
-        return `CREATE ${routineType} ${functionName}(${paramString}) ${returnStatement} BEGIN \n${sqlQuery} \nEND;`;
-    };
+            return `CREATE ${routineType} ${functionName}(${paramString}) ${returnStatement} \n${functionBody}`;
+        };
+
+        setEditQuery(generateQuery());
+    }, [functionBody, parameters, returnType])
 
     const handleUpdateFunction = async () => {
+        console.log(functionBody)
         if (!functionBody) {
             alert("Por favor, completa el cuerpo de la función.");
             return;
         }
 
-        const query = `DROP FUNCTION IF EXISTS ${functionName}; ${functionBody}`;
-        setEditQuery(query); // Establecer el query a mostrar
+
+        const process = (isFunction ? "FUNCTION" : "PROCEDURE");
+        const query = `DROP ${process} ${functionName};`
 
         const res = await fetch(`http://localhost:3001/connection/execute`, {
             method: "POST",
@@ -171,20 +188,38 @@ export default function EditFunctionPage() {
             }),
         });
 
-        if (res.ok) {
-            alert("Función actualizada exitosamente.");
-            router.push("/");
-        } else {
-            alert("Error al actualizar la función.");
+        if (!res.ok) {
+            alert("Error al eliminar la función.");
+            return
         }
-    };
 
+        console.log(editQuery)
+        const res2 = await fetch(`http://localhost:3001/connection/execute`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                poolId,
+                sqlQuery: editQuery,
+            }),
+        });
+
+        if (!res2.ok) {
+            alert("Error al actualizar la función.");
+            return
+        }
+
+        alert("Función actualizada correctamente.");
+        router.push("/");
+
+    };
 
     async function handleFunctionChange(funcName: string) {
         setFunctionName(funcName);
         const foundFunc = functionsList.find((func) => func.name === funcName)
 
+        //handleUpdateFunction();
         if (!foundFunc) throw new Error("guaya")
+
         setIsFunction(foundFunc.isFunc);
     }
 
@@ -201,7 +236,7 @@ export default function EditFunctionPage() {
             <label className="block text-sm font-medium mb-2">Selecciona una Función</label>
             <select
                 value={functionName}
-                onChange={(e) => handleFunctionChange(e.target.value)}
+                onChange={(e) => setFunctionName(e.target.value)}
                 className="mt-1 p-2 w-full border rounded"
             >
                 <option value="">Selecciona una función</option>
@@ -224,7 +259,8 @@ export default function EditFunctionPage() {
             <select
                 value={returnType}
                 onChange={(e) => setReturnType(e.target.value)}
-                className="mt-1 p-2 w-full border rounded"
+                className="mt-1 p-2 w-full border rounded disabled:bg-pale disabled:cursor-not-allowed"
+                disabled={!isFunction}
             >
                 {dataTypes.map((type) => (
                     <option key={type} value={type}>
@@ -283,7 +319,7 @@ export default function EditFunctionPage() {
                     onClick={handleUpdateFunction}
                     className="px-4 py-2 bg-green-500 text-white rounded"
                 >
-                    Actualizar Función
+                    Actualizar {isFunction ? "Función" : "Procedimiento"}
                 </button>
             </div>
         </div>

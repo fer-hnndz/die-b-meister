@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -11,7 +11,7 @@ interface ConnectionInfo {
     database: string;
 }
 
-export default function CreateViewPage() {
+export default function EditViewPage() {
     const params = useParams<{ poolId: string }>();
     const poolId = parseInt(params.poolId);
     const router = useRouter();
@@ -19,12 +19,12 @@ export default function CreateViewPage() {
     const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(null);
     const [viewName, setViewName] = useState<string>("");
     const [viewQuery, setViewQuery] = useState<string>("");
-    const [tables, setTables] = useState<string[]>([]);
+    const [views, setViews] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        // Obtener información de conexión y tablas disponibles
+        // Obtener información de conexión
         const fetchConnectionInfo = async () => {
             try {
                 const response = await fetch(`http://localhost:3001/pool/get/${poolId}`);
@@ -32,21 +32,20 @@ export default function CreateViewPage() {
                 const data = await response.json();
                 setConnectionInfo(data);
 
-                // Obtener lista de tablas
-                const tablesRes = await fetch(`http://localhost:3001/connection/execute`, {
+                // Obtener lista de vistas
+                const viewsRes = await fetch(`http://localhost:3001/connection/execute`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        poolId: poolId,
-                        sqlQuery: `SHOW TABLES FROM ${data.database};`,
+                        poolId,
+                        sqlQuery: `SHOW FULL TABLES IN ${data.database} WHERE Table_type = 'VIEW';`,
                     }),
                 });
 
-                if (!tablesRes.ok) throw new Error("Error al obtener la lista de tablas.");
-
-                const tablesData = await tablesRes.json();
-                const tablesList = tablesData.map((row: any) => row[`Tables_in_${data.database}`]);
-                setTables(tablesList);
+                if (!viewsRes.ok) throw new Error("Error al obtener la lista de vistas.");
+                const viewsData = await viewsRes.json();
+                const viewsList = viewsData.map((row: any) => row[`Tables_in_${data.database}`]);
+                setViews(viewsList);
             } catch (err: any) {
                 setError(err.message);
             } finally {
@@ -57,12 +56,47 @@ export default function CreateViewPage() {
         fetchConnectionInfo();
     }, [poolId]);
 
-    const generateViewQuery = (): string => {
-        if (!viewName || !viewQuery) return "";
-        return `CREATE VIEW ${viewName} AS ${viewQuery};`;
+    const fetchViewQuery = async (view: string) => {
+        try {
+            const viewQueryRes = await fetch(`http://localhost:3001/connection/execute`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    poolId,
+                    sqlQuery: `SHOW CREATE VIEW ${view};`,
+                }),
+            });
+
+            if (!viewQueryRes.ok) throw new Error("Error al obtener la consulta de la vista.");
+            const viewData = await viewQueryRes.json();
+
+            const fullQuery = viewData[0]['Create View']; // Suponiendo que el resultado tenga esta estructura
+            const queryParts = fullQuery.split(" AS "); // Dividir la cadena en " AS "
+            if (queryParts.length > 1) {
+                setViewName(view);
+                // Unir el segundo segmento y el resto usando join
+                setViewQuery(queryParts.slice(1).join(" AS ").trim()); // Establecer la consulta SQL unida
+            } else {
+                setViewName(view);
+                setViewQuery(fullQuery); // En caso de que no haya "AS", establecer la cadena completa
+            }
+        } catch (err: any) {
+            setError(err.message);
+        }
     };
 
-    const handleCreateView = async () => {
+
+    const handleViewChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        const selectedView = event.target.value;
+        fetchViewQuery(selectedView);
+    };
+
+    const generateViewQuery = (): string => {
+        if (!viewName || !viewQuery) return "";
+        return `CREATE OR REPLACE VIEW ${viewName} AS ${viewQuery};`;
+    };
+
+    const handleEditView = async () => {
         if (!viewName || !viewQuery) {
             alert("Por favor, completa todos los campos.");
             return;
@@ -78,10 +112,10 @@ export default function CreateViewPage() {
         });
 
         if (res.ok) {
-            alert("Vista creada exitosamente.");
+            alert("Vista editada exitosamente.");
             router.push("/");
         } else {
-            alert("Error al crear la vista.");
+            alert("Error al editar la vista.");
         }
     };
 
@@ -90,18 +124,24 @@ export default function CreateViewPage() {
 
     return (
         <div className="container mx-auto p-6">
-            <h1 className="text-2xl font-semibold mb-4">Crear Vista (MariaDB)</h1>
+            <h1 className="text-2xl font-semibold mb-4">Editar Vista (MariaDB)</h1>
             <p className="text-sm mb-4">
                 Conectado a: <b>{connectionInfo?.database}</b> - {connectionInfo?.user}@{connectionInfo?.host}:{connectionInfo?.port}
             </p>
 
-            <label className="block text-sm font-medium mt-4">Nombre de la Vista</label>
-            <input
-                type="text"
+            <label className="block text-sm font-medium mt-4">Seleccionar Vista</label>
+            <select
                 value={viewName}
-                onChange={(e) => setViewName(e.target.value)}
+                onChange={handleViewChange}
                 className="mt-1 p-2 w-full border rounded"
-            />
+            >
+                <option value="" disabled>Selecciona una vista</option>
+                {views.map((view) => (
+                    <option key={view} value={view}>
+                        {view}
+                    </option>
+                ))}
+            </select>
 
             <label className="block text-sm font-medium mt-4">Consulta SQL para la Vista</label>
             <textarea
@@ -126,10 +166,10 @@ export default function CreateViewPage() {
                     Cancelar
                 </button>
                 <button
-                    onClick={handleCreateView}
+                    onClick={handleEditView}
                     className="px-4 py-2 bg-green-500 text-white rounded"
                 >
-                    Crear Vista
+                    Editar Vista
                 </button>
             </div>
         </div>
